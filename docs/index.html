@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用 AI 從零打造動能投資回測系統 — 教學簡報</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--card:#14141f;--accent:#6c5ce7;--accent2:#a29bfe;--green:#00b894;--orange:#fdcb6e;--red:#e17055;--text:#e8e6f0;--dim:#8a85a0;--glass:rgba(108,92,231,0.08);--border:rgba(108,92,231,0.2)}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+.deck{position:relative;width:100%;height:100vh}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 80px;opacity:0;pointer-events:none;transition:opacity .5s ease,transform .5s ease;transform:translateX(40px);overflow-y:auto}
+.slide.active{opacity:1;pointer-events:auto;transform:translateX(0)}
+.slide.prev{opacity:0;transform:translateX(-40px)}
+/* Title slide */
+.title-slide{background:radial-gradient(ellipse at 30% 50%,rgba(108,92,231,0.15),transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(0,184,148,0.08),transparent 50%),var(--bg)}
+.title-slide h1{font-size:3.2em;font-weight:900;background:linear-gradient(135deg,#a29bfe,#6c5ce7,#00b894);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;line-height:1.3;margin-bottom:16px}
+.title-slide .subtitle{font-size:1.3em;color:var(--dim);text-align:center;margin-bottom:40px}
+.title-slide .meta{font-size:.9em;color:var(--dim);opacity:.7}
+/* Content slides */
+.content-slide{align-items:flex-start;background:var(--bg);justify-content:flex-start}
+.content-slide .slide-header{width:100%;margin-bottom:32px;display:flex;align-items:center;gap:16px}
+.content-slide .lesson-badge{background:var(--accent);color:#fff;padding:6px 18px;border-radius:20px;font-size:.85em;font-weight:700;white-space:nowrap}
+.content-slide h2{font-size:2em;font-weight:700;color:#fff}
+.content-slide .slide-body{width:100%;flex:1;display:flex;gap:36px;overflow-y:auto;overflow-x:hidden}
+.col{flex:1;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;transition:border-color .3s}
+.card:hover{border-color:var(--accent)}
+.card h3{font-size:1em;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h3 .icon{font-size:1.2em}
+.card p,.card li{font-size:.88em;color:var(--dim);line-height:1.7}
+.card ul{list-style:none;padding:0}
+.card li::before{content:'→ ';color:var(--accent2)}
+/* Prompt card */
+.prompt-card{background:linear-gradient(135deg,rgba(108,92,231,0.1),rgba(0,184,148,0.05));border-color:var(--accent)}
+.prompt-card h3{color:var(--accent2)}
+.prompt-card pre{background:rgba(0,0,0,0.4);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:.78em;color:var(--green);line-height:1.8;white-space:pre-wrap;word-break:break-all;overflow-y:auto;max-height:300px}
+/* Objective card */
+.obj-card h3{color:var(--green)}
+.obj-card .checklist{list-style:none;padding:0}
+.obj-card .checklist li{padding:4px 0;font-size:.88em;color:var(--text)}
+.obj-card .checklist li::before{content:'✅ ';color:var(--green)}
+/* Progress bar */
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .4s ease;z-index:100}
+/* Nav */
+.nav{position:fixed;bottom:30px;right:40px;display:flex;gap:10px;z-index:100}
+.nav button{width:48px;height:48px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1.2em;cursor:pointer;transition:all .2s}
+.nav button:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.slide-num{position:fixed;bottom:38px;left:40px;font-size:.85em;color:var(--dim);z-index:100;font-family:'JetBrains Mono',monospace}
+/* Section slide */
+.section-slide{background:radial-gradient(ellipse at 50% 50%,rgba(108,92,231,0.12),transparent 60%),var(--bg);text-align:center}
+.section-slide .section-num{font-size:5em;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.section-slide h2{font-size:2.4em;font-weight:700;margin:16px 0 12px}
+.section-slide p{font-size:1.1em;color:var(--dim);max-width:600px}
+/* Architecture slide */
+.arch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%}
+.arch-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.arch-item .emoji{font-size:1.8em;margin-bottom:6px}
+.arch-item .name{font-weight:700;font-size:.9em;margin-bottom:4px}
+.arch-item .desc{font-size:.75em;color:var(--dim)}
+.arch-item .lines{font-size:.7em;color:var(--accent2);margin-top:4px}
+/* Tip card */
+.tip-card{border-color:var(--orange) !important;background:rgba(253,203,110,0.04)}
+.tip-card h3{color:var(--orange)}
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="slide-num" id="slideNum"></div>
+<div class="deck" id="deck">
+
+<!-- ===== SLIDE 0: TITLE ===== -->
+<div class="slide title-slide active">
+  <h1>用 AI 從零打造<br>動能投資回測系統</h1>
+  <div class="subtitle">完整教學指南 — Prompt 範本 × 解說 × 實作</div>
+  <div class="meta">7 堂課 ・ 從環境建置到 GUI 面板 ・ 零程式基礎也能上手</div>
+</div>
+
+<!-- ===== SLIDE 1: OVERVIEW ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">總覽</span><h2>這套系統能做什麼？</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card"><h3><span class="icon">📈</span>動能選股排名</h3><p>掃描 S&P 500 全部成分股，根據 Adjusted Slope（趨勢強度）自動排名，選出動能最強的 4 檔股票</p></div>
+      <div class="card"><h3><span class="icon">🔄</span>自動週期調倉</h3><p>每週自動檢查持股，賣出排名下跌或技術面轉弱的股票，買入新的強勢股</p></div>
+      <div class="card"><h3><span class="icon">🛡️</span>風險管理</h3><p>ATR 波動加權倉位、20% 停損、跳空缺口保護、殘差相關性過濾避免集中風險</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3><span class="icon">🌡️</span>牛熊自動切換</h3><p>用 SPY 200 日均線判斷大盤狀態，熊市時自動清倉個股、分批抄底 SSO（2x ETF）</p></div>
+      <div class="card"><h3><span class="icon">📊</span>互動式報告</h3><p>自動生成 HTML 回測報告：績效指標、權益曲線、月度熱力圖、完整交易紀錄</p></div>
+      <div class="card"><h3><span class="icon">🖥️</span>圖形化面板</h3><p>Tkinter GUI 一鍵更新資料、執行回測、計算即時操作建議</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 2: ARCHITECTURE ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">架構</span><h2>系統由 9 個檔案組成</h2></div>
+  <div class="slide-body" style="flex-direction:column;gap:20px">
+    <div class="arch-grid">
+      <div class="arch-item" style="border-color:var(--accent)"><div class="emoji">🖥️</div><div class="name">dashboard_final.py</div><div class="desc">GUI 操作面板</div><div class="lines">~1,300 行</div></div>
+      <div class="arch-item" style="border-color:var(--green)"><div class="emoji">⚙️</div><div class="name">run_strategy_final.py</div><div class="desc">回測流程入口</div><div class="lines">~64 行</div></div>
+      <div class="arch-item" style="border-color:var(--orange)"><div class="emoji">📊</div><div class="name">portfolio_backtester_final.py</div><div class="desc">核心回測引擎</div><div class="lines">~1,007 行</div></div>
+      <div class="arch-item" style="border-color:var(--accent2)"><div class="emoji">🔍</div><div class="name">selection.py</div><div class="desc">選股引擎 + 排名</div><div class="lines">~362 行</div></div>
+      <div class="arch-item" style="border-color:var(--red)"><div class="emoji">🌡️</div><div class="name">market_regime.py</div><div class="desc">牛熊市場判斷</div><div class="lines">~62 行</div></div>
+      <div class="arch-item" style="border-color:var(--green)"><div class="emoji">📄</div><div class="name">report_generator_final.py</div><div class="desc">HTML 報告生成</div><div class="lines">~1,333 行</div></div>
+      <div class="arch-item"><div class="emoji">📥</div><div class="name">update_data.py</div><div class="desc">Yahoo Finance 資料更新</div><div class="lines">~211 行</div></div>
+      <div class="arch-item"><div class="emoji">🔧</div><div class="name">utils.py</div><div class="desc">共用工具函數</div><div class="lines">~124 行</div></div>
+      <div class="arch-item"><div class="emoji">⚙️</div><div class="name">config_final.py</div><div class="desc">策略參數設定</div><div class="lines">~69 行</div></div>
+    </div>
+    <div class="card tip-card" style="margin-top:8px"><h3><span class="icon">💡</span>教學原則</h3><p>不是一次做完！每堂課只做 1-2 個檔案，確保每一步都「跑得起來」，學員有成就感。</p></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 3: LESSON 1 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">01</div>
+  <h2>環境建置 + 資料取得</h2>
+  <p>安裝 Python、下載股票資料、建立專案結構</p>
+</div>
+
+<!-- ===== SLIDE 4: LESSON 1 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 1 堂</span><h2>環境建置 + 資料取得</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>安裝 Python + VS Code + 必要套件</li>
+          <li>用 yfinance 下載 S&P 500 歷史資料</li>
+          <li>支援增量更新（只抓新資料）</li>
+          <li>統一資料格式（Date/OHLCV）</li>
+        </ul>
+      </div>
+      <div class="card tip-card"><h3><span class="icon">💡</span>教學重點</h3>
+        <ul><li>需要 S&P 500 <b>歷史</b>成分股清單，避免生存者偏差</li>
+        <li>增量更新大幅節省時間（500+ 檔股票）</li>
+        <li>統一格式讓後續所有模組都能共用</li></ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>幫我寫一個 Python 程式 update_data.py：
+
+1. 用 yfinance 下載股票歷史資料
+2. 資料目錄為 data/，每個股票一個檔案
+3. 支援增量更新：
+   - 檢查現有檔案的最後日期
+   - 只下載之後的新資料
+   - 合併後去除重複
+4. 需更新的標的：
+   - SPY, SSO, QQQ（存為 .csv）
+   - data/ 內所有 .txt 股票檔案
+5. 統一輸出格式：
+   Date, Open, High, Low, Close, Adj Close, Volume
+6. 顯示更新進度和摘要統計
+
+另外寫一個 utils.py，包含通用的
+資料讀取函數 load_data()，
+能自動偵測檔案格式（有無 header、
+欄位名稱大小寫）並統一轉換。</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 5: LESSON 2 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">02</div>
+  <h2>策略參數設計</h2>
+  <p>把投資邏輯翻譯成程式可讀的設定檔</p>
+</div>
+
+<!-- ===== SLIDE 6: LESSON 2 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 2 堂</span><h2>策略參數設計</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建立集中式設定檔 config.py</li>
+          <li>理解每個參數的投資邏輯</li>
+          <li>學會修改參數而不動程式碼</li>
+        </ul>
+      </div>
+      <div class="card"><h3><span class="icon">📋</span>關鍵參數解說</h3>
+        <ul>
+          <li><b>LOOKBACK=90</b>：用 90 天趨勢排名</li>
+          <li><b>TARGET_HOLDINGS=4</b>：集中持有 4 檔</li>
+          <li><b>EXIT_EMA=50</b>：跌破 50 日 EMA 賣出</li>
+          <li><b>STOP_LOSS=20%</b>：個股停損保護</li>
+          <li><b>ATR 加權</b>：低波動股票配更多資金</li>
+          <li><b>殘差相關性</b>：避免同質化持股</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>幫我建立 config.py，管理動能策略的
+所有參數，用中文註解說明：
+
+# 回測設定
+- 初始資金: 1,000,000
+- 手續費: 1%
+
+# 策略設定
+- 目標持股數: 4
+- 調倉頻率: 每 1 週
+- 調倉日: 週三 (weekday=2)
+- 觀測期: 90 天
+- 出場 EMA: 50 日
+- 排名門檻: 掉出前 20 名賣出
+- 停損: 20%
+- 跳空缺口 > 20% 不買入
+- 持倉跳空 > 50% 隔日出場
+- Adj Slope 上限: 1.5（過熱保護）
+
+# 市場基準
+- 基準: SPY
+- 抄底標的: SSO
+
+# ATR 風險再平衡
+- ATR 週期: 20 天
+- 再平衡閾值: 3%
+
+# 殘差相關性過濾
+- 相關係數門檻: 0.6
+- 回看天數: 60
+- 候選股數量: 20</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 7: LESSON 3 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">03</div>
+  <h2>選股引擎</h2>
+  <p>動能排名系統 — 策略的核心 Alpha 來源</p>
+</div>
+
+<!-- ===== SLIDE 8: LESSON 3 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 3 堂</span><h2>選股引擎（核心 Alpha）</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建構 SelectionEngine 類別</li>
+          <li>計算 Adj Slope = 斜率 × R²</li>
+          <li>歷史成分股過濾（防生存者偏差）</li>
+          <li>殘差相關性過濾（去同質化）</li>
+          <li>快取機制優化效能</li>
+        </ul>
+      </div>
+      <div class="card"><h3><span class="icon">📐</span>Adj Slope 數學原理</h3>
+        <ul>
+          <li><b>Slope</b> = log(收盤價) 對時間做線性迴歸的斜率 → 衡量趨勢方向和速度</li>
+          <li><b>R²</b> = 決定係數 → 衡量趨勢的「乾淨程度」</li>
+          <li><b>Adj Slope = Slope × R²</b> → 既強又穩的趨勢得高分</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>寫一個 SelectionEngine 類別 (selection.py)：
+
+1. __init__: 初始化資料快取
+2. _load_constituents(): 讀取 Excel
+   取得任意日期的 S&P500 成分股清單
+3. calculate_metrics(ticker, date, lookback):
+   - 取回看期間的收盤價
+   - 計算 log(Close) vs 時間的線性迴歸
+   - adj_slope = slope × R²
+   - 計算最大跳空缺口百分比
+   - 計算 EMA（多個週期）
+   - 計算 ATR%
+4. scan_market(date, lookback):
+   - 取當日成分股
+   - 逐一計算指標
+   - 過濾: 缺口>20% 排除,
+     adj_slope>1.5 排除
+   - 按 adj_slope 降序排名
+5. filter_by_residual_correlation():
+   - 對 SPY 做迴歸取殘差
+   - 逐一加入候選股，若與已選股
+     殘差相關性 > 0.6 則跳過
+6. 加入快取避免重複計算</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 9: LESSON 4 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">04</div>
+  <h2>市場體制判斷</h2>
+  <p>牛市做多個股、熊市抄底 ETF — 大盤方向決定一切</p>
+</div>
+
+<!-- ===== SLIDE 10: LESSON 4 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 4 堂</span><h2>市場體制判斷</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建構 MarketRegime 類別</li>
+          <li>SPY 200MA 牛熊判斷</li>
+          <li>連續兩周確認機制</li>
+          <li>ATH 回撤計算（抄底參考）</li>
+        </ul>
+      </div>
+      <div class="card"><h3><span class="icon">📖</span>策略邏輯解說</h3>
+        <ul>
+          <li><b>牛市</b>：SPY 連續兩周 > 200MA → 持有個股</li>
+          <li><b>熊市</b>：SPY < 200MA → 清倉個股</li>
+          <li><b>抄底</b>：SPY 從 ATH 跌 -15%/-20%/-25% 時分批買入 SSO</li>
+          <li><b>兩周確認</b>：避免假突破造成頻繁切換</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>寫一個 MarketRegime 類別
+(market_regime.py)：
+
+初始化: 傳入 SPY 和 SSO 的 DataFrame
+
+_calculate_indicators():
+- 計算 SPY 200日移動平均線
+- 計算 ATH（歷史新高，用 cummax）
+- 計算 DD_ATH（距 ATH 的跌幅百分比）
+
+get_state(date):
+- 回傳該日的 SPY Close、200MA、
+  ATH、DD 四個數值
+- 若日期不存在，找最近的交易日
+
+is_bull_market(date):
+- 牛市條件：
+  本周 SPY > 200MA
+  AND 上一周(date-7天) SPY > 200MA
+- 兩個條件都滿足才回傳 True
+- 任一不滿足回傳 False
+  （保守原則）</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 11: LESSON 5 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">05</div>
+  <h2>回測引擎</h2>
+  <p>最複雜的核心模組 — 建議分步驟逐步建構</p>
+</div>
+
+<!-- ===== SLIDE 12: LESSON 5 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 5 堂</span><h2>回測引擎（分步驟建構）</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建構 PortfolioBacktester 類別</li>
+          <li>逐日遍歷、追蹤現金和持股</li>
+          <li>ATR 反比例加權倉位</li>
+          <li>停損 / 跳空出場 / 熊市切換</li>
+        </ul>
+      </div>
+      <div class="card tip-card"><h3><span class="icon">⚠️</span>教學建議</h3>
+        <p>這是 1,000+ 行的大模組，<b>絕對不要一次叫 AI 全部生成</b>。分成 5 個 Prompt 逐步追加功能：</p>
+        <ul>
+          <li>5-1. 基本框架（逐日循環）</li>
+          <li>5-2. 買賣函數</li>
+          <li>5-3. 每週輪動邏輯</li>
+          <li>5-4. ATR 加權 + 風險再平衡</li>
+          <li>5-5. 停損 / 缺口 / 熊市邏輯</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>Prompt 5-1：基本框架</h3>
+<pre>建立 PortfolioBacktester 類別：
+
+__init__: 接收 start_date, end_date,
+initial_capital, 以及共用的
+SelectionEngine 和 MarketRegime
+
+run(): 主迴圈
+- 遍歷 start 到 end 每個交易日
+- 每日更新持股市值和總權益
+- 記錄權益曲線到 equity_curve
+- 判斷是否為調倉日
+- 輸出最終績效統計
+
+_buy(): 買入函數
+- 計算可買股數 (考慮手續費)
+- 更新 holdings、現金、avg_cost
+- 記錄交易到 trades list
+
+_sell(): 賣出函數
+- 更新 holdings、現金
+- 記錄交易原因、損益</pre>
+      </div>
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>Prompt 5-4：ATR 加權</h3>
+<pre>在 Backtester 中加入 ATR 加權：
+
+_calculate_atr_weights(candidates):
+- 每檔股票的權重 =
+  (1/ATR%) / Σ(1/ATR%)
+- 波動小 → 權重大、波動大 → 權重小
+
+_get_overweight_sells():
+- 計算當前權重 vs ATR目標權重
+- 差距 > 3% 的賣出超重部分
+
+_distribute_remaining_cash():
+- 剩餘現金按 ATR 比例分給低配股</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 13: LESSON 6 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">06</div>
+  <h2>報告生成 + 視覺化</h2>
+  <p>把冰冷的數字變成有說服力的互動報告</p>
+</div>
+
+<!-- ===== SLIDE 14: LESSON 6 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 6 堂</span><h2>報告生成 + 視覺化</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建構 HTML 互動式報告</li>
+          <li>計算完整績效指標</li>
+          <li>月度/年度報酬分析</li>
+          <li>歷史下跌期間分析</li>
+        </ul>
+      </div>
+      <div class="card"><h3><span class="icon">📊</span>報告包含內容</h3>
+        <ul>
+          <li>CAGR、MDD、Sharpe Ratio、勝率</li>
+          <li>權益曲線（vs SPY 對照）</li>
+          <li>回撤曲線</li>
+          <li>月度報酬率熱力圖</li>
+          <li>最大下跌期間分析表</li>
+          <li>完整交易紀錄（可排序篩選）</li>
+          <li>當前持股狀況</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>寫 report_generator_final.py，
+讀取回測輸出的 CSV 檔案，
+生成一個獨立的 HTML 報告：
+
+1. 讀取 equity_curve.csv 和 trades.csv
+2. 計算績效指標:
+   - 年化報酬率 (CAGR)
+   - 最大回撤 (MDD)
+   - Sharpe Ratio
+   - 勝率、盈虧比
+3. 生成圖表（用內嵌 JavaScript）:
+   - 權益曲線 + SPY 疊加對比
+   - 回撤曲線
+   - 月度報酬熱力圖 (紅綠色階)
+   - 年度報酬長條圖
+4. 歷史下跌期間分析表:
+   開始日、最低點、恢復日、
+   跌幅、持續天數
+5. 交易紀錄表（可排序）
+6. 全部中文 UI，現代深色主題
+7. 單一 HTML 檔案，無外部依賴</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 15: LESSON 7 SECTION ===== -->
+<div class="slide section-slide">
+  <div class="section-num">07</div>
+  <h2>Dashboard 圖形面板</h2>
+  <p>讓不會寫程式的人也能一鍵操作</p>
+</div>
+
+<!-- ===== SLIDE 16: LESSON 7 DETAIL ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">第 7 堂</span><h2>Dashboard 圖形面板</h2></div>
+  <div class="slide-body">
+    <div class="col">
+      <div class="card obj-card"><h3><span class="icon">🎯</span>教學目標</h3>
+        <ul class="checklist">
+          <li>建構 Tkinter GUI 面板</li>
+          <li>三大功能按鈕整合</li>
+          <li>即時操作建議計算</li>
+          <li>（進階）打包成 .exe</li>
+        </ul>
+      </div>
+      <div class="card"><h3><span class="icon">🖥️</span>三大功能</h3>
+        <ul>
+          <li><b>更新資料</b>：呼叫 update_data.py</li>
+          <li><b>執行回測</b>：呼叫 run_strategy，開啟報告</li>
+          <li><b>操作建議</b>：輸入持股和資金，計算應該買/賣什麼、幾股、多少錢</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card prompt-card"><h3><span class="icon">🤖</span>AI Prompt 範本</h3>
+<pre>用 Tkinter 建立一個圖形介面
+dashboard_final.py：
+
+1. 頂部：策略參數設定區
+   - 可調整 LOOKBACK、EMA、
+     STOP_LOSS 等參數
+   - 修改後自動存回 config.py
+2. 三個功能按鈕：
+   - 📥 更新資料
+   - 📊 執行回測
+   - 🧮 計算操作建議
+3. 操作建議功能：
+   - 輸入：總資金 + 當前持股明細
+   - 輸出：掃描市場排名後告訴你
+     應該賣哪幾檔、買哪幾檔、
+     每檔幾股、ATR 目標權重
+   - 用圖表顯示權重對比
+4. 配色: 溫暖米色系、精緻卡片風格
+5. 按鈕執行時在背景線程運行，
+   避免介面卡死</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 17: KEY PRINCIPLES ===== -->
+<div class="slide content-slide">
+  <div class="slide-header"><span class="lesson-badge">教學心法</span><h2>5 個關鍵教學原則</h2></div>
+  <div class="slide-body" style="flex-direction:column;gap:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%">
+      <div class="card"><h3><span class="icon">💬</span> 1. 教「對話」不教「寫程式」</h3><p>學員不需要會 Python，他們需要學會的是如何<b>準確描述需求</b>，讓 AI 幫他寫程式碼。你的 Prompt 範本就是最有價值的教材。</p></div>
+      <div class="card"><h3><span class="icon">🏃</span> 2. 每一步都要能「跑起來」</h3><p>每堂課結束時，學員手上的東西要能單獨執行並看到結果。不要一次給太多，分步建構。</p></div>
+      <div class="card"><h3><span class="icon">🔄</span> 3. 先求有、再求好</h3><p>先做出會動的簡單版本（例：等權重買 4 檔），確認能跑之後再逐步加功能（ATR 加權、停損、熊市切換⋯）</p></div>
+      <div class="card"><h3><span class="icon">📏</span> 4. 提供「預期結果」比對</h3><p>告訴學員：「同樣參數、2020-2025 回測，CAGR 大約 XX%，MDD 大約 XX%」。有了參考值才知道自己做對了。</p></div>
+    </div>
+    <div class="card" style="border-color:var(--red)"><h3><span class="icon">⚠️</span> 5. 強調 AI 的局限性</h3><p>AI 擅長「寫程式碼」，但<b>不會主動告訴你策略應該怎麼設計</b>。投資策略的設計、參數的選擇、風險的控管——這些是「人」的工作，也是你作為教師最有價值的智慧。</p></div>
+  </div>
+</div>
+
+<!-- ===== SLIDE 18: CLOSING ===== -->
+<div class="slide title-slide">
+  <h1>開始你的教學之旅 🚀</h1>
+  <div class="subtitle">你已經走過這條路，現在換你帶人走一遍</div>
+  <div class="meta" style="margin-top:40px;font-size:1em;color:var(--dim);max-width:500px;text-align:center;line-height:1.8">
+    ✅ 整理 Prompt 範本（你最核心的知識產品）<br>
+    ✅ 錄第一堂課（環境建置最簡單，先開始）<br>
+    ✅ 提供預期結果讓學員比對<br>
+    ✅ 用你的實戰經驗補充 AI 做不到的部分
+  </div>
+</div>
+
+</div>
+
+<div class="nav">
+  <button onclick="go(-1)" id="btnPrev">←</button>
+  <button onclick="go(1)" id="btnNext">→</button>
+</div>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+let cur=0;
+function show(i){
+  slides.forEach((s,idx)=>{s.classList.remove('active','prev');if(idx<i)s.classList.add('prev')});
+  slides[i].classList.add('active');
+  document.getElementById('progress').style.width=((i/(slides.length-1))*100)+'%';
+  document.getElementById('slideNum').textContent=`${i+1} / ${slides.length}`;
+}
+function go(d){cur=Math.max(0,Math.min(slides.length-1,cur+d));show(cur)}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});
+show(0);
+</script>
+</body>
+</html>

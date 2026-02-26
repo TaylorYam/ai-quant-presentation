@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Data files
+data/
+*.csv
+*.xlsx
+*.json
+
+# Reports
+strategy_report*.html
+
+# VBS launcher
+*.vbs
+
+# IDE
+.vscode/
+.idea/
